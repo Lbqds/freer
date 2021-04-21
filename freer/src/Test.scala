@@ -2,6 +2,7 @@ package freer
 
 import control._
 import effects._
+import cats.data.StateT
 
 object Test extends App {
   type ET = Amb :|: State :|: UNil
@@ -49,4 +50,25 @@ object Test extends App {
 
   type TE1 = Exception :|: State :|: UNil
   println(tripleDecr[TE1].runExc.runState[Int](2).run)
+
+  // monad transformer
+  import cats.mtl._
+  import cats.mtl.implicits._
+  import cats._
+  import cats.data._
+  import cats.implicits._
+
+  object MonadTransformer {
+    def decr[F[_]: Monad : Stateful[*[_], Int] : Handle[*[_], Throwable]]: F[Unit] = for {
+      x <- Stateful[F, Int].get
+      _ <- if (x > 0) Stateful[F, Int].set(x - 1) else Handle[F, Throwable].raise(new Throwable("less then 0"))
+    } yield ()
+
+    def tripleDecr[F[_]: Monad : Stateful[*[_], Int] : Handle[*[_], Throwable]]: F[Unit] =
+      decr[F] >> Handle[F, Throwable].handleWith(decr[F] >> decr[F])(_ => Monad[F].unit)
+
+  }
+
+  println(MonadTransformer.tripleDecr[StateT[EitherT[Id, Throwable, *], Int, *]].run(2).value)
+  println(MonadTransformer.tripleDecr[EitherT[StateT[Id, Int, *], Throwable, *]].value.run(2))
 }

@@ -16,4 +16,13 @@ object freer extends ScalaModule {
   object effects extends ScalaModule {
     def scalaVersion = sv
   }
+
+  def ivyDeps = Agg(
+    ivy"org.typelevel::cats-mtl:1.2.0",
+    ivy"org.typelevel::cats-core:2.3.0"
+  )
+
+  def scalacPluginIvyDeps = Agg(
+    ivy"org.typelevel:::kind-projector:0.11.3"
+  )
 }
