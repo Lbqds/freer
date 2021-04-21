@@ -33,4 +33,20 @@ object Test extends App {
 
   type TE = State :|: Amb :|: UNil
   println(suprising[TE].runState[Int](0).runAmb.run)
+
+  // Effect Handlers in Scope(8)
+  type _exc[U <: Union] = MemberIn[Exception, U]
+  def decr[U <: Union : _exc : _state]: Freer[U, Unit] = for {
+    x <- State.get[U, Int]
+    _ <- if (x > 0) State.set[U, Int](x - 1) else Exception.`throw`[U, Throwable](new Throwable("less then 0"))
+  } yield ()
+
+  def tripleDecr[U <: Union : _exc : _state]: Freer[U, Unit] = 
+    decr[U] >> Exception.`catch`[U, Throwable, Unit](decr[U] >> decr[U], _ => Freer.pure[U, Unit](()))
+
+  type ET1 = State :|: Exception :|: UNil
+  println(tripleDecr[ET1].runState[Int](2).runExc.run)
+
+  type TE1 = Exception :|: State :|: UNil
+  println(tripleDecr[TE1].runExc.runState[Int](2).run)
 }

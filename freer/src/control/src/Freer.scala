@@ -4,6 +4,8 @@ package control
 trait Freer[U <: Union, A] {
   def map[B](f: A => B): Freer[U, B] = Bind(this, (x: A) => Pure(f(x)))
   def flatMap[B](f: A => Freer[U, B]) = Bind(this, f)
+  def >>=[B](f: A => Freer[U, B]) = flatMap(f)
+  def >>[B](fb: Freer[U, B]): Freer[U, B] = Bind(this, (_: A) => fb)
 }
 
 final case class Pure[U <: Union, A](x: A) extends Freer[U, A]
@@ -15,8 +17,8 @@ object Freer {
   def send[F[_], U <: Union, A](fa: F[A])(implicit ev: MemberIn[F, U]): Freer[U, A] = 
     inject(fa).flatMap(pure)
 
-  private [freer] def inject[F[_], U <: Union, A](fa: F[A])(implicit ev: MemberIn[F, U]): Effect[U, A] = Effect(fa, ev.index)
-  def decompose[F[_], U <: Union, A](eff: Effect[U, A])(implicit ev: MemberIn[F, U]): Either[F[A], Effect[U#Tail, A]] = {
+  private def inject[F[_], U <: Union, A](fa: F[A])(implicit ev: MemberIn[F, U]): Effect[U, A] = Effect(fa, ev.index)
+  private [freer] def decompose[F[_], U <: Union, A](eff: Effect[U, A])(implicit ev: MemberIn[F, U]): Either[F[A], Effect[U#Tail, A]] = {
     if (ev.index == 0 && ev.index == eff.index) Left(eff.inner.asInstanceOf[F[A]])
     else Right(Effect[U#Tail, A](eff.inner, eff.index - 1))
   }
